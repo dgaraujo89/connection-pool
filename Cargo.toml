@@ -1,0 +1,11 @@
+[package]
+name = "connection-pool"
+version = "0.0.1"
+edition = "2021"
+authors = ["Diego Araujo"]
+description = "This is a simple connection pool manager for async and non async projects."
+
+[dependencies]
+postgres = "0.19.7"
+tokio = { version = "1.38.0", features = ["full"] }
+tokio-postgres = "0.7.10"
