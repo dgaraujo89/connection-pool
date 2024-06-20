@@ -5,7 +5,7 @@ use std::rc::Rc;
 pub mod postgres_pool;
 
 pub trait Pool<T> {
-    fn get_client(&mut self) -> &T;
+    fn create(&mut self) -> T;
 }
 
 pub struct Config {
@@ -16,15 +16,19 @@ pub struct Config {
 pub struct PoolManager<T> {
     config: Config,
     current_size: u16,
-    _pool: VecDeque<Rc<Box<dyn Pool<T>>>>,
+    pool: Box<dyn Pool<T>>,
+    connections: VecDeque<Rc<Box<T>>>,
+    borrowed_connections: VecDeque<Rc<Box<T>>>,
 }
 
 impl<T> PoolManager<T> {
-    pub fn new(config: Config, _pool: Box<impl Pool<T>>) -> Self {
+    pub fn new(config: Config, pool: Box<impl Pool<T> + 'static>) -> Self {
         let mut pool_manager = PoolManager {
             config,
             current_size: 0,
-            _pool: VecDeque::new(),
+            pool,
+            connections: VecDeque::new(),
+            borrowed_connections: VecDeque::new(),
         };
 
         pool_manager.init();
@@ -34,8 +38,17 @@ impl<T> PoolManager<T> {
 
     fn init(&mut self) {
         for _ in 0..self.config.minimum {
+            let client = Box::new(self.pool.create());
+            self.connections.push_front(Rc::new(client));
             self.current_size += 1;
         }
+    }
+
+    fn borrow(&mut self) -> Rc<Box<T>> {
+        let conn = self.connections.pop_back().unwrap();
+        let conn_clone = Rc::clone(&conn);
+        self.borrowed_connections.push_front(conn);
+        conn_clone
     }
 }
 

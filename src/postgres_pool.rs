@@ -4,33 +4,21 @@ use crate::*;
 
 pub struct PostgresConnectionPool {
     config: String,
-    client: Option<Client>,
 }
 
 impl PostgresConnectionPool {
     pub fn new(connection_string: &str, config: Config) -> PoolManager<Client> {
         let pool = PostgresConnectionPool {
             config: String::from(connection_string),
-            client: None,
         };
 
         PoolManager::new(config, Box::new(pool))
     }
-
-    fn create(&mut self) {
-        self.client = Some(Client::connect(self.config.as_str(), NoTls).unwrap());
-    }
 }
 
 impl Pool<Client> for PostgresConnectionPool {
-    fn get_client(&mut self) -> &Client {
-        match self.client {
-            Some(ref client) => client,
-            None => {
-                self.create();
-                self.client.as_ref().unwrap()
-            }
-        }
+    fn create(&mut self) -> Client {
+        Client::connect(self.config.as_str(), NoTls).unwrap()
     }
 }
 
@@ -39,7 +27,7 @@ mod test {
     use super::prelude::*;
 
     #[test]
-    fn my_test() {
+    fn create_postgres_pool_manager() {
         let config = Config {
             minimum: 1,
             maximum: 5,
